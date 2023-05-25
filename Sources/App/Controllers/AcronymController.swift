@@ -10,10 +10,13 @@ struct AcronymController: RouteCollection {
         acronymsRoutes.get("search", use: searchHandler)
         acronymsRoutes.get("sorted", use: sortedHandler)
         acronymsRoutes.get("first", use: firstHandler)
+        acronymsRoutes.get(":acronymID", "user", use: getUserHandler)
+        acronymsRoutes.get(":acronymID", "categories", use: getCategoriesHandler)
         acronymsRoutes.post(use: createHandler)
+        acronymsRoutes.post(":acronymID", "categories", ":categoryID", use: addCategoriesHandler)
         acronymsRoutes.put(":acronymID", use: updateHandler)
         acronymsRoutes.delete(":acronymID", use: deleteHandler)
-        acronymsRoutes.get(":acronymID", "user", use: getUserHandler)
+        acronymsRoutes.delete(":acronymID", "categories", ":categoryID", use: removeCategoriesHandler)
     }
 
     func getAllHandler(_ req: Request) async throws -> [Acronym] {
@@ -91,6 +94,43 @@ struct AcronymController: RouteCollection {
         guard let acronym else { throw Abort(.notFound) }
 
         return try await acronym.$user.get(on: req.db)
+    }
+
+    func addCategoriesHandler(_ req: Request) async throws -> HTTPStatus {
+        let acronym = try await Acronym.find(req.parameters.get("acronymID"), on: req.db)
+        guard let acronym else { throw Abort(.notFound) }
+
+        let category = try await Category.find(req.parameters.get("categoryID"), on: req.db)
+        guard let category else { throw Abort(.notFound) }
+
+        let acronymCategories = try await acronym.$categories.query(on: req.db).all()
+
+        guard !acronymCategories.contains(where: { $0.id == category.id }) else { throw Abort(.notAcceptable) }
+
+        try await acronym.$categories.attach(category, on: req.db)
+        return .created
+    }
+
+    func getCategoriesHandler(_ req: Request) async throws -> [Category] {
+        let acronym = try await Acronym.find(req.parameters.get("acronymID"), on: req.db)
+        guard let acronym else { throw Abort(.notFound) }
+
+        return try await acronym.$categories.query(on: req.db).all()
+    }
+
+    func removeCategoriesHandler(_ req: Request) async throws -> HTTPStatus {
+        let acronym = try await Acronym.find(req.parameters.get("acronymID"), on: req.db)
+        guard let acronym else { throw Abort(.notFound) }
+
+        let category = try await Category.find(req.parameters.get("categoryID"), on: req.db)
+        guard let category else { throw Abort(.notFound) }
+
+        let acronymCategories = try await acronym.$categories.query(on: req.db).all()
+
+        guard acronymCategories.contains(where: { $0.id == category.id }) else { throw Abort(.notAcceptable) }
+
+        try await acronym.$categories.detach(category, on: req.db)
+        return .noContent
     }
 }
 struct CreateAcronymData: Content {

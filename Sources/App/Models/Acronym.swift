@@ -12,6 +12,11 @@ final class Acronym: Model, Content {
     var long: String
     @Parent(key: "userID")
     var user: User
+    @Siblings(
+        through: AcronymCategoryPivot.self,
+        from: \.$acronym,
+        to: \.$category)
+    var categories: [Category]
 
     init() {}
 
