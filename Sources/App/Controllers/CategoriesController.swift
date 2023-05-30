@@ -7,6 +7,7 @@ struct CategoriesController: RouteCollection {
         categoriesRoute.post(use: createHandler)
         categoriesRoute.get(use: getAllHandler)
         categoriesRoute.get(":categoryID", use: getHandler)
+        categoriesRoute.delete(":categoryID", use: deleteHandler)
     }
 
     func createHandler(_ req: Request) async throws -> Category {
@@ -24,5 +25,14 @@ struct CategoriesController: RouteCollection {
         let category = try await Category.find(req.parameters.get("categoryID"), on: req.db)
         guard let category else { throw Abort(.notFound) }
         return category
+    }
+
+    func deleteHandler(_ req: Request) async throws -> HTTPStatus {
+        let categoryID: UUID? = req.parameters.get("categoryID")
+        let category = try await Category.find(categoryID, on: req.db)
+        guard let category else { throw Abort(.notFound) }
+
+        try await category.delete(on: req.db)
+        return .noContent
     }
 }

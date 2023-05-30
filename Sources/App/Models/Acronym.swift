@@ -32,3 +32,29 @@ final class Acronym: Model, Content {
         self.$user.id = userID
     }
 }
+
+extension Acronym {
+
+    func buildResponse(db: Database) async throws -> AcronymResponse {
+        return try await .init(
+            id: id,
+            short: short,
+            long: long,
+            user: $user.get(on: db),
+            categories: $categories.get(on: db))
+    }
+}
+
+struct AcronymResponse: Content {
+    let id: UUID?
+    let short: String
+    let long: String
+    let user: User
+    let categories: [Category]
+}
+
+struct AcronymRequest: Content {
+    let short: String
+    let long: String
+    let userID: UUID
+}

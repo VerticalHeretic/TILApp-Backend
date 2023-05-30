@@ -19,42 +19,82 @@ struct AcronymController: RouteCollection {
         acronymsRoutes.delete(":acronymID", "categories", ":categoryID", use: removeCategoriesHandler)
     }
 
-    func getAllHandler(_ req: Request) async throws -> [Acronym] {
-        return try await Acronym.query(on: req.db).all()
+    func getAllHandler(_ req: Request) async throws -> [AcronymResponse] {
+        let acronyms = try await Acronym.query(on: req.db).with(\.$categories).with(\.$user).all()
+
+        return acronyms.compactMap { AcronymResponse(
+            id: $0.id,
+            short: $0.short,
+            long: $0.long,
+            user: $0.user,
+            categories: $0.categories)
+        }
     }
 
-    func getHandler(_ req: Request) async throws -> Acronym {
+    func getHandler(_ req: Request) async throws -> AcronymResponse {
         let acronymID: UUID? = req.parameters.get("acronymID")
         let acronym = try await Acronym.find(acronymID, on: req.db)
         guard let acronym else { throw Abort(.notFound) }
-        return acronym
+
+        return try await acronym.buildResponse(db: req.db)
     }
 
-    func searchHandler(_ req: Request) async throws -> [Acronym] {
+    func searchHandler(_ req: Request) async throws -> [AcronymResponse] {
         guard let searchTerm = req.query[String.self, at: "term"] else {
             throw Abort(.badRequest)
         }
 
-        return try await Acronym.query(on: req.db).group(.or) { or in
-            or.filter(\.$short == searchTerm)
-            or.filter(\.$long == searchTerm)
-        }.all()
+        let acronyms = try await Acronym.query(on: req.db)
+            .with(\.$categories)
+            .with(\.$user)
+            .group(.or) { or in
+                or.filter(\.$short == searchTerm)
+                or.filter(\.$long == searchTerm)
+            }
+            .all()
+
+        return acronyms.compactMap { AcronymResponse(
+            id: $0.id,
+            short: $0.short,
+            long: $0.long,
+            user: $0.user,
+            categories: $0.categories)
+        }
     }
 
-    func sortedHandler(_ req: Request) async throws -> [Acronym] {
-        return try await Acronym.query(on: req.db)
+    func sortedHandler(_ req: Request) async throws -> [AcronymResponse] {
+       let acronyms = try await Acronym.query(on: req.db)
+            .with(\.$categories)
+            .with(\.$user)
             .sort(\.$short, .ascending)
             .all()
+
+        return acronyms.compactMap { AcronymResponse(
+            id: $0.id,
+            short: $0.short,
+            long: $0.long,
+            user: $0.user,
+            categories: $0.categories)
+        }
     }
 
-    func firstHandler(_ req: Request) async throws -> Acronym {
-        let acronym = try await Acronym.query(on: req.db).first()
+    func firstHandler(_ req: Request) async throws -> AcronymResponse {
+        let acronym = try await Acronym.query(on: req.db)
+            .with(\.$categories)
+            .with(\.$user)
+            .first()
         guard let acronym else { throw Abort(.notFound) }
-        return acronym
+
+        return AcronymResponse(
+            id: acronym.id,
+            short: acronym.short,
+            long: acronym.long,
+            user: acronym.user,
+            categories: acronym.categories)
     }
 
-    func createHandler(_ req: Request) async throws -> Acronym {
-        let data = try req.content.decode(CreateAcronymData.self)
+    func createHandler(_ req: Request) async throws -> AcronymResponse {
+        let data = try req.content.decode(AcronymRequest.self)
         let acronym = Acronym(
             short: data.short,
             long: data.long,
@@ -62,13 +102,17 @@ struct AcronymController: RouteCollection {
         )
 
         try await acronym.save(on: req.db)
-
-        return acronym
+        return AcronymResponse(
+            id: acronym.id,
+            short: acronym.short,
+            long: acronym.long,
+            user: acronym.user,
+            categories: [])
     }
 
-    func updateHandler(_ req: Request) async throws -> Acronym {
+    func updateHandler(_ req: Request) async throws -> AcronymResponse {
         let acronymID: UUID? = req.parameters.get("acronymID")
-        let updatedAcronym = try req.content.decode(CreateAcronymData.self)
+        let updatedAcronym = try req.content.decode(AcronymRequest.self)
         let acronym = try await Acronym.find(acronymID, on: req.db)
         guard let acronym else { throw Abort(.notFound) }
 
@@ -77,7 +121,7 @@ struct AcronymController: RouteCollection {
         acronym.$user.id = updatedAcronym.userID
 
         try await acronym.save(on: req.db)
-        return acronym
+        return try await acronym.buildResponse(db: req.db)
     }
 
     func deleteHandler(_ req: Request) async throws -> HTTPStatus {
@@ -132,9 +176,4 @@ struct AcronymController: RouteCollection {
         try await acronym.$categories.detach(category, on: req.db)
         return .noContent
     }
-}
-struct CreateAcronymData: Content {
-    let short: String
-    let long: String
-    let userID: UUID
 }

@@ -8,6 +8,7 @@ struct UserController: RouteCollection {
         usersRoute.get(use: getAllHandler)
         usersRoute.get(":userID", use: getHandler)
         usersRoute.get(":userID", "acronyms", use: getAcronymsHandler)
+        usersRoute.delete(":userID", use: deleteHandler)
     }
 
     func getAllHandler(_ req: Request) async throws -> [User] {
@@ -35,5 +36,14 @@ struct UserController: RouteCollection {
         try await user.save(on: req.db)
 
         return user
+    }
+
+    func deleteHandler(_ req: Request) async throws -> HTTPStatus {
+        let userID: UUID? = req.parameters.get("userID")
+        let user = try await User.find(userID, on: req.db)
+        guard let user else { throw Abort(.notFound) }
+
+        try await user.delete(on: req.db)
+        return .noContent
     }
 }
