@@ -63,5 +63,4 @@ struct AcronymResponse: Content {
 struct AcronymRequest: Content {
     let short: String
     let long: String
-    let userID: UUID
 }

@@ -23,21 +23,21 @@ final class UserTests: XCTestCase {
             password: "password"
         )
 
-        try app.test(.POST, usersURI, beforeRequest: { req in
+        try app.test(.POST, usersURI, loggedInRequest: true, beforeRequest: { req in
             try req.content.encode(user)
         }, afterResponse: { response in
-            let receivedUser = try response.content.decode(User.self)
+            let receivedUser = try response.content.decode(UserResponse.self)
 
             XCTAssertEqual(receivedUser.name, usersName)
             XCTAssertEqual(receivedUser.username, usersUsername)
             XCTAssertNotNil(receivedUser.id)
 
             try app.test(.GET, usersURI, afterResponse: { secondResponse in
-                let users = try secondResponse.content.decode([User].self)
-                XCTAssertEqual(users.count, 1)
-                XCTAssertEqual(users[0].name, usersName)
-                XCTAssertEqual(users[0].username, usersUsername)
-                XCTAssertEqual(users[0].id, receivedUser.id)
+                let users = try secondResponse.content.decode([UserResponse].self)
+                XCTAssertEqual(users.count, 2)
+                XCTAssertEqual(users[1].name, usersName)
+                XCTAssertEqual(users[1].username, usersUsername)
+                XCTAssertEqual(users[1].id, receivedUser.id)
             })
         })
     }
@@ -49,7 +49,7 @@ final class UserTests: XCTestCase {
             on: app.db)
 
         try app.test(.GET, "\(usersURI)\(user.id!)", afterResponse: { response in
-            let receivedUser = try response.content.decode(User.self)
+            let receivedUser = try response.content.decode(UserResponse.self)
 
             XCTAssertEqual(receivedUser.name, usersName)
             XCTAssertEqual(receivedUser.username, usersUsername)

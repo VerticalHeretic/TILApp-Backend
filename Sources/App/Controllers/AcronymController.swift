@@ -12,20 +12,21 @@ struct AcronymController: RouteCollection {
         acronymsRoutes.get("first", use: firstHandler)
         acronymsRoutes.get(":acronymID", "user", use: getUserHandler)
         acronymsRoutes.get(":acronymID", "categories", use: getCategoriesHandler)
-        acronymsRoutes.post(":acronymID", "categories", ":categoryID", use: addCategoriesHandler)
-        acronymsRoutes.put(":acronymID", use: updateHandler)
-        acronymsRoutes.delete(":acronymID", use: deleteHandler)
-        acronymsRoutes.delete(":acronymID", "categories", ":categoryID", use: removeCategoriesHandler)
 
-        let basicAuthMiddleware = User.authenticator()
+        // let basicAuthMiddleware = User.authenticator()
+        let tokenAuthMiddleware = Token.authenticator()
         let guardAuthMiddleware = User.guardMiddleware()
 
-        let protected = acronymsRoutes.grouped(
-            basicAuthMiddleware,
+        let tokenAuthGroup = acronymsRoutes.grouped(
+            tokenAuthMiddleware,
             guardAuthMiddleware
         )
 
-        protected.post(use: createHandler)
+        tokenAuthGroup.post(use: createHandler)
+        tokenAuthGroup.put(":acronymID", use: updateHandler)
+        tokenAuthGroup.delete(":acronymID", use: deleteHandler)
+        tokenAuthGroup.post(":acronymID", "categories", ":categoryID", use: addCategoriesHandler)
+        tokenAuthGroup.delete(":acronymID", "categories", ":categoryID", use: removeCategoriesHandler)
     }
 
     func getAllHandler(_ req: Request) async throws -> [AcronymResponse] {
@@ -81,10 +82,12 @@ struct AcronymController: RouteCollection {
 
     func createHandler(_ req: Request) async throws -> AcronymResponse {
         let data = try req.content.decode(AcronymRequest.self)
-        let acronym = Acronym(
+        let user = try req.auth.require(User.self)
+
+        let acronym = try Acronym(
             short: data.short,
             long: data.long,
-            userID: data.userID
+            userID: user.requireID()
         )
 
         try await acronym.save(on: req.db)
@@ -96,10 +99,11 @@ struct AcronymController: RouteCollection {
         let updatedAcronym = try req.content.decode(AcronymRequest.self)
         let acronym = try await Acronym.find(acronymID, on: req.db)
         guard let acronym else { throw Abort(.notFound) }
+        let user = try req.auth.require(User.self)
 
         acronym.short = updatedAcronym.short
         acronym.long = updatedAcronym.long
-        acronym.$user.id = updatedAcronym.userID
+        acronym.$user.id = try user.requireID()
 
         try await acronym.save(on: req.db)
         return try await acronym.buildResponse(db: req.db)

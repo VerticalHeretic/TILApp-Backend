@@ -9,6 +9,10 @@ struct UserController: RouteCollection {
         usersRoute.get(":userID", use: getHandler)
         usersRoute.get(":userID", "acronyms", use: getAcronymsHandler)
         usersRoute.delete(":userID", use: deleteHandler)
+
+        let basicAuthMiddleware = User.authenticator()
+        let basicAuthGroup = usersRoute.grouped(basicAuthMiddleware)
+        basicAuthGroup.post("login", use: loginHandler)
     }
 
     func getAllHandler(_ req: Request) async throws -> [UserResponse] {
@@ -47,5 +51,12 @@ struct UserController: RouteCollection {
 
         try await user.delete(on: req.db)
         return .noContent
+    }
+
+    func loginHandler(_ req: Request) async throws -> Token {
+        let user = try req.auth.require(User.self)
+        let token = try Token.generate(for: user)
+        try await token.save(on: req.db)
+        return token
     }
 }
