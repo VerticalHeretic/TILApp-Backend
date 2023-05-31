@@ -11,16 +11,16 @@ struct UserController: RouteCollection {
         usersRoute.delete(":userID", use: deleteHandler)
     }
 
-    func getAllHandler(_ req: Request) async throws -> [User] {
-        return try await User.query(on: req.db).all()
+    func getAllHandler(_ req: Request) async throws -> [UserResponse] {
+        return try await User.query(on: req.db).all().buildResponses()
     }
 
-    func getHandler(_ req: Request) async throws -> User {
+    func getHandler(_ req: Request) async throws -> UserResponse {
         let id: UUID? = req.parameters.get("userID")
         let user = try await User.find(id, on: req.db)
         guard let user else { throw Abort(.notFound) }
 
-        return user
+        return user.buildResponse()
     }
 
     func getAcronymsHandler(_ req: Request) async throws -> [Acronym] {
@@ -31,11 +31,13 @@ struct UserController: RouteCollection {
         return try await user.$acronyms.get(on: req.db)
     }
 
-    func createHandler(_ req: Request) async throws -> User {
+    func createHandler(_ req: Request) async throws -> UserResponse {
         let user = try req.content.decode(User.self)
+        user.password = try Bcrypt.hash(user.password)
+
         try await user.save(on: req.db)
 
-        return user
+        return user.buildResponse()
     }
 
     func deleteHandler(_ req: Request) async throws -> HTTPStatus {

@@ -40,8 +40,15 @@ extension Acronym {
             id: id,
             short: short,
             long: long,
-            user: $user.get(on: db),
+            user: $user.get(on: db).buildResponse(),
             categories: $categories.get(on: db))
+    }
+}
+
+extension Collection where Element: Acronym {
+
+    func buildResponses(db: Database) async throws -> [AcronymResponse] {
+        return try await self.asyncMap { try await $0.buildResponse(db: db) }
     }
 }
 
@@ -49,7 +56,7 @@ struct AcronymResponse: Content {
     let id: UUID?
     let short: String
     let long: String
-    let user: User
+    let user: UserResponse
     let categories: [Category]
 }
 

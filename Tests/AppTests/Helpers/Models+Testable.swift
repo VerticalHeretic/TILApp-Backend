@@ -7,7 +7,11 @@ extension User {
         username: String = "lukes",
         on database: Database
     ) async throws -> User {
-        let user = User(name: name, username: username)
+        let user = User(
+            name: name,
+            username: username,
+            password: "password"
+        )
         try await user.save(on: database)
         return user
     }

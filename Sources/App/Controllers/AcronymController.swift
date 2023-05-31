@@ -12,23 +12,26 @@ struct AcronymController: RouteCollection {
         acronymsRoutes.get("first", use: firstHandler)
         acronymsRoutes.get(":acronymID", "user", use: getUserHandler)
         acronymsRoutes.get(":acronymID", "categories", use: getCategoriesHandler)
-        acronymsRoutes.post(use: createHandler)
         acronymsRoutes.post(":acronymID", "categories", ":categoryID", use: addCategoriesHandler)
         acronymsRoutes.put(":acronymID", use: updateHandler)
         acronymsRoutes.delete(":acronymID", use: deleteHandler)
         acronymsRoutes.delete(":acronymID", "categories", ":categoryID", use: removeCategoriesHandler)
+
+        let basicAuthMiddleware = User.authenticator()
+        let guardAuthMiddleware = User.guardMiddleware()
+
+        let protected = acronymsRoutes.grouped(
+            basicAuthMiddleware,
+            guardAuthMiddleware
+        )
+
+        protected.post(use: createHandler)
     }
 
     func getAllHandler(_ req: Request) async throws -> [AcronymResponse] {
         let acronyms = try await Acronym.query(on: req.db).with(\.$categories).with(\.$user).all()
 
-        return acronyms.compactMap { AcronymResponse(
-            id: $0.id,
-            short: $0.short,
-            long: $0.long,
-            user: $0.user,
-            categories: $0.categories)
-        }
+        return try await acronyms.buildResponses(db: req.db)
     }
 
     func getHandler(_ req: Request) async throws -> AcronymResponse {
@@ -53,13 +56,7 @@ struct AcronymController: RouteCollection {
             }
             .all()
 
-        return acronyms.compactMap { AcronymResponse(
-            id: $0.id,
-            short: $0.short,
-            long: $0.long,
-            user: $0.user,
-            categories: $0.categories)
-        }
+        return try await acronyms.buildResponses(db: req.db)
     }
 
     func sortedHandler(_ req: Request) async throws -> [AcronymResponse] {
@@ -69,13 +66,7 @@ struct AcronymController: RouteCollection {
             .sort(\.$short, .ascending)
             .all()
 
-        return acronyms.compactMap { AcronymResponse(
-            id: $0.id,
-            short: $0.short,
-            long: $0.long,
-            user: $0.user,
-            categories: $0.categories)
-        }
+        return try await acronyms.buildResponses(db: req.db)
     }
 
     func firstHandler(_ req: Request) async throws -> AcronymResponse {
@@ -85,12 +76,7 @@ struct AcronymController: RouteCollection {
             .first()
         guard let acronym else { throw Abort(.notFound) }
 
-        return AcronymResponse(
-            id: acronym.id,
-            short: acronym.short,
-            long: acronym.long,
-            user: acronym.user,
-            categories: acronym.categories)
+        return try await acronym.buildResponse(db: req.db)
     }
 
     func createHandler(_ req: Request) async throws -> AcronymResponse {
@@ -102,12 +88,7 @@ struct AcronymController: RouteCollection {
         )
 
         try await acronym.save(on: req.db)
-        return AcronymResponse(
-            id: acronym.id,
-            short: acronym.short,
-            long: acronym.long,
-            user: acronym.user,
-            categories: [])
+        return try await acronym.buildResponse(db: req.db)
     }
 
     func updateHandler(_ req: Request) async throws -> AcronymResponse {

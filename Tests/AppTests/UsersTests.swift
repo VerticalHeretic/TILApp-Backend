@@ -17,7 +17,11 @@ final class UserTests: XCTestCase {
     }
 
     func testUserCanBeSavedWithAPI() async throws {
-        let user = User(name: usersName, username: usersUsername)
+        let user = User(
+            name: usersName,
+            username: usersUsername,
+            password: "password"
+        )
 
         try app.test(.POST, usersURI, beforeRequest: { req in
             try req.content.encode(user)
