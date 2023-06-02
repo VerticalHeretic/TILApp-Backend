@@ -4,7 +4,7 @@ struct UserController: RouteCollection {
 
     func boot(routes: RoutesBuilder) throws {
         let usersRoute = routes.grouped("api", "users")
-        usersRoute.post(use: createHandler)
+        usersRoute.post("register", use: registerHandler)
         usersRoute.get(use: getAllHandler)
         usersRoute.get(":userID", use: getHandler)
         usersRoute.get(":userID", "acronyms", use: getAcronymsHandler)
@@ -35,11 +35,15 @@ struct UserController: RouteCollection {
         return try await user.$acronyms.get(on: req.db)
     }
 
-    func createHandler(_ req: Request) async throws -> UserResponse {
+    func registerHandler(_ req: Request) async throws -> UserResponse {
         let user = try req.content.decode(User.self)
         user.password = try Bcrypt.hash(user.password)
 
-        try await user.save(on: req.db)
+        do {
+            try await user.save(on: req.db)
+        } catch {
+            throw Abort(.custom(code: 400, reasonPhrase: "There is already a user with such username"))
+        }
 
         return user.buildResponse()
     }
