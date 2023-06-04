@@ -74,7 +74,7 @@ extension XCTApplicationTester {
             XCTFail("\(error)", file: (file), line: line)
             throw error
         }
-        
+
         return self
     }
 

@@ -13,8 +13,10 @@ func routes(_ app: Application) throws {
     let acronymController = AcronymController()
     let userController = UserController()
     let categoriesController = CategoriesController()
+    let imperialController = ImperialController()
 
     try app.register(collection: acronymController)
     try app.register(collection: userController)
     try app.register(collection: categoriesController)
+    try app.register(collection: imperialController)
 }
