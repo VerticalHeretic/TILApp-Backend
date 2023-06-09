@@ -20,7 +20,8 @@ let package = Package(
                 .product(name: "Fluent", package: "fluent"),
                 .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
                 .product(name: "Vapor", package: "vapor"),
-                .product(name: "ImperialGoogle", package: "Imperial")
+                .product(name: "ImperialGoogle", package: "Imperial"),
+                .product(name: "ImperialGitHub", package: "Imperial")
             ],
             swiftSettings: [
                 // Enable better optimizations when building in Release configuration. Despite the use of
