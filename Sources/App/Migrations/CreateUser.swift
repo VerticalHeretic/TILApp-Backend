@@ -8,6 +8,7 @@ struct CreateUser: AsyncMigration {
             .field("name", .string, .required)
             .field("username", .string, .required)
             .field("password", .string, .required)
+            .field("siwaIdentifier", .string)
             .unique(on: "username")
             .create()
     }

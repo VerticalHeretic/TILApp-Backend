@@ -85,7 +85,6 @@ struct ImperialController: RouteCollection {
             }
     }
 
-
     func iOSGitHubLogin(_ req: Request) -> Response {
         req.session.data["oauth_login"] = "iOS"
         return req.redirect(to: "/login-github")
