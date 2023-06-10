@@ -14,6 +14,8 @@ final class User: Model, Content {
     var password: String
     @Children(for: \.$user)
     var acronyms: [Acronym]
+    @OptionalField(key: "siwaIdentifier")
+    var siwaIdentifier: String?
 
     init() {}
 
@@ -21,11 +23,13 @@ final class User: Model, Content {
         id: UUID? = nil,
         name: String,
         username: String,
-        password: String
+        password: String,
+        siwaIdentifier: String? = nil
     ) {
         self.name = name
         self.username = username
         self.password = password
+        self.siwaIdentifier = siwaIdentifier
     }
 }
 
