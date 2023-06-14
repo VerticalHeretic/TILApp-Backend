@@ -1,6 +1,7 @@
 import NIOSSL
 import Fluent
 import FluentPostgresDriver
+import SendGrid
 import Vapor
 
 // configures your application
@@ -41,4 +42,5 @@ public func configure(_ app: Application) async throws {
     try await app.autoMigrate()
 
     try routes(app)
+    app.sendgrid.initialize()
 }

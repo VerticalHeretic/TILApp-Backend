@@ -7,7 +7,11 @@ struct CreateAdminUser: AsyncMigration {
         let passwordHash: String
 
         passwordHash = try Bcrypt.hash("password")
-        let user = User(name: "Admin", username: "admin", password: passwordHash)
+        let user = User(
+            name: "Admin",
+            username: "admin",
+            password: passwordHash,
+            email: "admin@localhost.local")
         return try await user.save(on: database)
     }
 

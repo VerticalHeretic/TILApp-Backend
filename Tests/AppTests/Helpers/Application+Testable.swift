@@ -58,7 +58,8 @@ extension XCTApplicationTester {
                 userToLogin = User(
                     name: "Admin",
                     username: "admin",
-                    password: "password")
+                    password: "password",
+                    email: "admin@test.com")
             }
 
             let token = try login(user: userToLogin)

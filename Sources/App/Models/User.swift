@@ -16,6 +16,10 @@ final class User: Model, Content {
     var acronyms: [Acronym]
     @OptionalField(key: "siwaIdentifier")
     var siwaIdentifier: String?
+    @Field(key: "email")
+    var email: String
+    @OptionalField(key: "profilePicture")
+    var profilePicture: String?
 
     init() {}
 
@@ -24,19 +28,23 @@ final class User: Model, Content {
         name: String,
         username: String,
         password: String,
-        siwaIdentifier: String? = nil
+        siwaIdentifier: String? = nil,
+        email: String,
+        profilePicture: String? = nil
     ) {
         self.name = name
         self.username = username
         self.password = password
         self.siwaIdentifier = siwaIdentifier
+        self.email = email
+        self.profilePicture = profilePicture
     }
 }
 
 extension User {
 
     func buildResponse() -> UserResponse {
-        return UserResponse(id: id, name: name, username: username)
+        return UserResponse(id: id, name: name, username: username, profilePicture: profilePicture)
     }
 }
 
@@ -61,4 +69,5 @@ struct UserResponse: Content {
     var id: UUID?
     var name: String
     var username: String
+    var profilePicture: String?
 }

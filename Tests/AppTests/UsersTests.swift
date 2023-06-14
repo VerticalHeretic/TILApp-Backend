@@ -20,7 +20,8 @@ final class UserTests: XCTestCase {
         let user = User(
             name: usersName,
             username: usersUsername,
-            password: "password"
+            password: "password",
+            email: "\(usersUsername)@test.com"
         )
 
         try app.test(.POST, usersURI, loggedInRequest: true, beforeRequest: { req in
