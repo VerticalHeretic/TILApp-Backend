@@ -4,8 +4,6 @@ import JWT
 
 struct UserController: RouteCollection {
 
-    private let imageFolder = "ProfilePictures/"
-
     func boot(routes: RoutesBuilder) throws {
         let usersRoute = routes.grouped("api", "users")
         usersRoute.post("register", use: registerHandler)
@@ -126,8 +124,8 @@ struct UserController: RouteCollection {
         let data = try req.content.decode(ImageUploadData.self)
         let user = try req.auth.require(User.self)
         let userID = try user.requireID()
-        let name = "\(userID)-\(UUID())).jpg"
-        let path = req.application.directory.workingDirectory + imageFolder + name
+        let name = "\(userID)-\(UUID()).jpg"
+        let path = req.application.directory.publicDirectory + name
         try await req.fileio.writeFile(.init(data: data.picture), at: path)
 
         user.profilePicture = name
@@ -140,12 +138,11 @@ struct UserController: RouteCollection {
         let user = try await User.find(req.parameters.get("userID"), on: req.db)
 
         guard let user else {
-            req.logger.notice("Could not find user with id \(req.parameters.get("userID"))")
-            throw Abort(.notFound)
+            throw Abort(.notFound, reason: "User with such id not found")
         }
 
         guard let fileName = user.profilePicture else { throw Abort(.notFound) }
-        let path = req.application.directory.workingDirectory + imageFolder + fileName
+        let path = req.application.directory.publicDirectory + fileName
         return req.fileio.streamFile(at: path)
     }
 }

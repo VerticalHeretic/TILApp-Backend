@@ -44,7 +44,7 @@ final class User: Model, Content {
 extension User {
 
     func buildResponse() -> UserResponse {
-        return UserResponse(id: id, name: name, username: username, profilePicture: profilePicture)
+        return UserResponse(id: id, name: name, username: username)
     }
 }
 
@@ -69,5 +69,4 @@ struct UserResponse: Content {
     var id: UUID?
     var name: String
     var username: String
-    var profilePicture: String?
 }

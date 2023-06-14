@@ -8,4 +8,4 @@ db.sqlite
 .swiftpm
 .env
 .vscode
-ProfilePictures/*.jpg
+Public/*.jpg
