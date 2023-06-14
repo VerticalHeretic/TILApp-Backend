@@ -21,7 +21,8 @@ extension User {
         let user = User(
             name: name,
             username: createUsername,
-            password: password)
+            password: password,
+            email: "admin@test.com")
         try await user.save(on: database)
         return user
     }

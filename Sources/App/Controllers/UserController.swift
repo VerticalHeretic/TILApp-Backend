@@ -12,10 +12,26 @@ struct UserController: RouteCollection {
         usersRoute.get(":userID", "acronyms", use: getAcronymsHandler)
         usersRoute.delete(":userID", use: deleteHandler)
         usersRoute.post("siwa", use: signInWithApple)
+        usersRoute.get(":userID", "profilePicture", use: getUserProfilePictureHandler)
 
         let basicAuthMiddleware = User.authenticator()
         let basicAuthGroup = usersRoute.grouped(basicAuthMiddleware)
         basicAuthGroup.post("login", use: loginHandler)
+
+        let tokenAuthMiddleware = Token.authenticator()
+        let guardAuthMiddleware = User.guardMiddleware()
+
+        let tokenAuthGroup = usersRoute.grouped(
+            tokenAuthMiddleware,
+            guardAuthMiddleware
+        )
+
+        tokenAuthGroup.on(
+            .POST,
+            "profilePicture",
+            body: .collect(maxSize: "10mb"),
+            use: addProfilePictureHandler
+        )
     }
 
     func getAllHandler(_ req: Request) async throws -> [UserResponse] {
@@ -94,11 +110,43 @@ struct UserController: RouteCollection {
             name: name,
             username: email,
             password: UUID().uuidString,
-            siwaIdentifier: appleToken.subject.value
+            siwaIdentifier: appleToken.subject.value,
+            email: email
         )
+
         try await newUser.save(on: req.db)
         let token = try Token.generate(for: newUser)
         try await token.save(on: req.db)
         return token
     }
+
+    func addProfilePictureHandler(_ req: Request) async throws -> HTTPStatus {
+        let data = try req.content.decode(ImageUploadData.self)
+        let user = try req.auth.require(User.self)
+        let userID = try user.requireID()
+        let name = "\(userID)-\(UUID()).jpg"
+        let path = req.application.directory.publicDirectory + name
+        try await req.fileio.writeFile(.init(data: data.picture), at: path)
+
+        user.profilePicture = name
+        try await user.save(on: req.db)
+
+        return .accepted
+    }
+
+    func getUserProfilePictureHandler(_ req: Request) async throws -> Response {
+        let user = try await User.find(req.parameters.get("userID"), on: req.db)
+
+        guard let user else {
+            throw Abort(.notFound, reason: "User with such id not found")
+        }
+
+        guard let fileName = user.profilePicture else { throw Abort(.notFound) }
+        let path = req.application.directory.publicDirectory + fileName
+        return req.fileio.streamFile(at: path)
+    }
+}
+
+struct ImageUploadData: Content {
+    var picture: Data
 }

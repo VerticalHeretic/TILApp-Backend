@@ -27,6 +27,7 @@ struct ImperialController: RouteCollection {
             from: GitHub.self,
             authenticate: "login-github",
             callback: githubCallbackURL,
+            scope: ["user:email"],
             completion: processGitHubLogin)
 
          routes.get("iOS", "login-github", use: iOSGitHubLogin)
@@ -45,7 +46,8 @@ struct ImperialController: RouteCollection {
                             let user = User(
                                 name: userInfo.name,
                                 username: userInfo.email,
-                                password: UUID().uuidString)
+                                password: UUID().uuidString,
+                                email: userInfo.email)
 
                             return user.save(on: req.db).flatMap {
                                 // request.session.authenticate(user)
@@ -62,7 +64,8 @@ struct ImperialController: RouteCollection {
     func processGitHubLogin(_ req: Request, token: String) throws -> EventLoopFuture<ResponseEncodable> {
         return try GitHub
             .getUser(on: req)
-            .flatMap { userInfo in
+            .and(GitHub.getEmails(on: req))
+            .flatMap { userInfo, emailInfo in
                 return User
                     .query(on: req.db)
                     .filter(\.$username == userInfo.login)
@@ -72,8 +75,8 @@ struct ImperialController: RouteCollection {
                             let user = User(
                                 name: userInfo.name,
                                 username: userInfo.login,
-                                password: UUID().uuidString)
-
+                                password: UUID().uuidString,
+                                email: emailInfo[0].email)
                             return user
                             .save(on: req.db)
                             .flatMap {
