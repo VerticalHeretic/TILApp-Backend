@@ -2,11 +2,11 @@ import Fluent
 import Vapor
 
 final class Category: Model, Content {
-    static let schema = "categories"
+    static let schema = Category.V20230615.schemaName
 
     @ID
     var id: UUID?
-    @Field(key: "name")
+    @Field(key: Category.V20230615.name)
     var name: String
 
     init() {}

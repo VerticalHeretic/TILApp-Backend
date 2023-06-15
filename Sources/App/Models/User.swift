@@ -2,24 +2,26 @@ import Fluent
 import Vapor
 
 final class User: Model, Content {
-    static let schema = "users"
+    static let schema = User.V20230615.schemaName
 
     @ID
     var id: UUID?
-    @Field(key: "name")
+    @Field(key: User.V20230615.name)
     var name: String
-    @Field(key: "username")
+    @Field(key: User.V20230615.username)
     var username: String
-    @Field(key: "password")
+    @Field(key: User.V20230615.password)
     var password: String
     @Children(for: \.$user)
     var acronyms: [Acronym]
-    @OptionalField(key: "siwaIdentifier")
+    @OptionalField(key: User.V20230615.siwaIdentifier)
     var siwaIdentifier: String?
-    @Field(key: "email")
+    @Field(key: User.V20230615.email)
     var email: String
-    @OptionalField(key: "profilePicture")
+    @OptionalField(key: User.V20230615.profilePicture)
     var profilePicture: String?
+    @OptionalField(key: User.V20230615Twitter.twitterURL)
+    var twitterURL: String?
 
     init() {}
 
@@ -30,7 +32,8 @@ final class User: Model, Content {
         password: String,
         siwaIdentifier: String? = nil,
         email: String,
-        profilePicture: String? = nil
+        profilePicture: String? = nil,
+        twitterURL: String? = nil
     ) {
         self.name = name
         self.username = username
@@ -38,6 +41,7 @@ final class User: Model, Content {
         self.siwaIdentifier = siwaIdentifier
         self.email = email
         self.profilePicture = profilePicture
+        self.twitterURL = twitterURL
     }
 }
 
