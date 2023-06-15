@@ -6,9 +6,9 @@ final class AcronymCategoryPivot: Model {
 
     @ID
     var id: UUID?
-    @Parent(key: "acronymID")
+    @Parent(key: AcronymCategoryPivot.V20230615.acronymID)
     var acronym: Acronym
-    @Parent(key: "categoryID")
+    @Parent(key: AcronymCategoryPivot.V20230615.categoryID)
     var category: Category
 
     init() {}

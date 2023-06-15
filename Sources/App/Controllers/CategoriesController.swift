@@ -22,7 +22,12 @@ struct CategoriesController: RouteCollection {
 
     func createHandler(_ req: Request) async throws -> Category {
         let category = try req.content.decode(Category.self)
-        try await category.save(on: req.db)
+
+        do {
+            try await category.save(on: req.db)
+        } catch {
+            throw Abort(.notAcceptable, reason: "Category already exists")
+        }
 
         return category
     }
