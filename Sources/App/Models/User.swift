@@ -50,12 +50,20 @@ extension User {
     func buildResponse() -> UserResponse {
         return UserResponse(id: id, name: name, username: username)
     }
+
+    func buildResponseV2() -> UserResponseV2 {
+        return UserResponseV2(id: id, name: name, username: username, twitterURL: twitterURL)
+    }
 }
 
 extension Collection where Element: User {
 
     func buildResponses() -> [UserResponse] {
         return self.map { $0.buildResponse() }
+    }
+
+    func buildResponsesV2() -> [UserResponseV2] {
+        return self.map { $0.buildResponseV2() }
     }
 }
 
@@ -73,4 +81,11 @@ struct UserResponse: Content {
     var id: UUID?
     var name: String
     var username: String
+}
+
+struct UserResponseV2: Content {
+    var id: UUID?
+    var name: String
+    var username: String
+    var twitterURL: String?
 }

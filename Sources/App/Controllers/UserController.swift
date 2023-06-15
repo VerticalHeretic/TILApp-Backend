@@ -14,6 +14,10 @@ struct UserController: RouteCollection {
         usersRoute.post("siwa", use: signInWithApple)
         usersRoute.get(":userID", "profilePicture", use: getUserProfilePictureHandler)
 
+        // MARK: API Version 2 Routes 
+        let usersV2Route = routes.grouped("api", "v2", "users")
+        usersV2Route.get(":userID", use: getHandlerV2)
+
         let basicAuthMiddleware = User.authenticator()
         let basicAuthGroup = usersRoute.grouped(basicAuthMiddleware)
         basicAuthGroup.post("login", use: loginHandler)
@@ -44,6 +48,14 @@ struct UserController: RouteCollection {
         guard let user else { throw Abort(.notFound) }
 
         return user.buildResponse()
+    }
+
+    func getHandlerV2(_ req: Request) async throws -> UserResponseV2 {
+        let id: UUID? = req.parameters.get("userID")
+        let user = try await User.find(id, on: req.db)
+        guard let user else { throw Abort(.notFound) }
+
+        return user.buildResponseV2()
     }
 
     func getAcronymsHandler(_ req: Request) async throws -> [Acronym] {
