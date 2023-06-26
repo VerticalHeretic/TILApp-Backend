@@ -3,21 +3,8 @@ import Vapor
 struct CategoriesController: RouteCollection {
 
     func boot(routes: RoutesBuilder) throws {
-        let categoriesRoute = routes.grouped("api", "categories")
-
-        categoriesRoute.get(use: getAllHandler)
-        categoriesRoute.get(":categoryID", use: getHandler)
-
-        let tokenAuthMiddleware = Token.authenticator()
-        let guardAuthMiddleware = User.guardMiddleware()
-
-        let tokenAuthGroup = categoriesRoute.grouped(
-            tokenAuthMiddleware,
-            guardAuthMiddleware
-        )
-
-        tokenAuthGroup.post(use: createHandler)
-        tokenAuthGroup.delete(":categoryID", use: deleteHandler)
+        let categoriesRoutes = buildGeneralCategoriesRoutes(routes: routes)
+        buildAuthenticatedCategoryRoutes(routes: categoriesRoutes)
     }
 
     func createHandler(_ req: Request) async throws -> Category {
@@ -49,5 +36,47 @@ struct CategoriesController: RouteCollection {
 
         try await category.delete(on: req.db)
         return .noContent
+    }
+
+    private func buildGeneralCategoriesRoutes(routes: RoutesBuilder) -> RoutesBuilder {
+        let categoriesRoutes = routes
+            .groupedOpenAPI(tags: ["Categories"])
+            .grouped("api", "categories")
+
+        categoriesRoutes.get(use: getAllHandler)
+                .openAPI(
+                    summary: "Get all categories",
+                    response: .type([Category].self)
+                )
+        categoriesRoutes.get(":categoryID", use: getHandler)
+                .openAPI(
+                    summary: "Get category by ID",
+                    response: .type(Category.self)
+                )
+        return categoriesRoutes
+    }
+
+    private func buildAuthenticatedCategoryRoutes(routes: RoutesBuilder)  {
+        let categoriesRoutes = buildGeneralCategoriesRoutes(routes: routes)
+
+        let tokenAuthMiddleware = Token.authenticator()
+        let guardAuthMiddleware = User.guardMiddleware()
+
+        let tokenAuthGroup = categoriesRoutes.grouped(
+            tokenAuthMiddleware,
+            guardAuthMiddleware
+        )
+
+        tokenAuthGroup.post(use: createHandler)
+                .openAPI(
+                    summary: "Create an category",
+                    body: .type(Category.self),
+                    response: .type(Category.self)
+                )
+        tokenAuthGroup.delete(":categoryID", use: deleteHandler)
+                .openAPI(
+                    summary: "Delete category with ID",
+                    response: .type(HTTPStatus.self)
+                )
     }
 }

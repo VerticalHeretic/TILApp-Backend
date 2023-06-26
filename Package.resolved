@@ -262,12 +262,30 @@
       }
     },
     {
+      "identity" : "swiftopenapi",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/dankinsoid/SwiftOpenAPI.git",
+      "state" : {
+        "revision" : "0a790b493edb4450ccc78b11919498cc5085ab28",
+        "version" : "2.18.1"
+      }
+    },
+    {
       "identity" : "vapor",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/vapor/vapor.git",
       "state" : {
         "revision" : "8b79ff0bd264a33bd0b7471dcf50dd1be983f992",
         "version" : "4.76.3"
+      }
+    },
+    {
+      "identity" : "vaportoopenapi",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/dankinsoid/VaporToOpenAPI.git",
+      "state" : {
+        "revision" : "0ba6581199d11fdbfe5dc6e7a24a5e69aeef0651",
+        "version" : "4.3.10"
       }
     },
     {

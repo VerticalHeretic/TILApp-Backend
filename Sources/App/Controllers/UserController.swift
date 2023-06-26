@@ -5,37 +5,9 @@ import JWT
 struct UserController: RouteCollection {
 
     func boot(routes: RoutesBuilder) throws {
-        let usersRoute = routes.grouped("api", "users")
-        usersRoute.post("register", use: registerHandler)
-        usersRoute.get(use: getAllHandler)
-        usersRoute.get(":userID", use: getHandler)
-        usersRoute.get(":userID", "acronyms", use: getAcronymsHandler)
-        usersRoute.delete(":userID", use: deleteHandler)
-        usersRoute.post("siwa", use: signInWithApple)
-        usersRoute.get(":userID", "profilePicture", use: getUserProfilePictureHandler)
-
-        // MARK: API Version 2 Routes 
-        let usersV2Route = routes.grouped("api", "v2", "users")
-        usersV2Route.get(":userID", use: getHandlerV2)
-
-        let basicAuthMiddleware = User.authenticator()
-        let basicAuthGroup = usersRoute.grouped(basicAuthMiddleware)
-        basicAuthGroup.post("login", use: loginHandler)
-
-        let tokenAuthMiddleware = Token.authenticator()
-        let guardAuthMiddleware = User.guardMiddleware()
-
-        let tokenAuthGroup = usersRoute.grouped(
-            tokenAuthMiddleware,
-            guardAuthMiddleware
-        )
-
-        tokenAuthGroup.on(
-            .POST,
-            "profilePicture",
-            body: .collect(maxSize: "10mb"),
-            use: addProfilePictureHandler
-        )
+        let usersRoute = buildGeneralUserRoutesV1(builder: routes)
+        buildGeneralUserRoutesV2(builder: routes)
+        buildAuthenticatedUserRoutes(builder: usersRoute)
     }
 
     func getAllHandler(_ req: Request) async throws -> [UserResponse] {
@@ -45,7 +17,9 @@ struct UserController: RouteCollection {
     func getHandler(_ req: Request) async throws -> UserResponse {
         let id: UUID? = req.parameters.get("userID")
         let user = try await User.find(id, on: req.db)
-        guard let user else { throw Abort(.notFound) }
+        guard let user else {
+            throw Abort(.custom(code: HTTPResponseStatus.notFound.code, reasonPhrase: "No user with such ID"))
+        }
 
         return user.buildResponse()
     }
@@ -156,6 +130,102 @@ struct UserController: RouteCollection {
         guard let fileName = user.profilePicture else { throw Abort(.notFound) }
         let path = req.application.directory.publicDirectory + fileName
         return req.fileio.streamFile(at: path)
+    }
+
+    private func buildGeneralUserRoutesV1(builder: RoutesBuilder) -> RoutesBuilder {
+        let usersRoute = builder
+            .groupedOpenAPI(tags: ["Users"])
+            .grouped("api", "users")
+
+        usersRoute.post("register", use: registerHandler)
+            .openAPI(
+                summary: "Register a new user",
+                response: .type(UserResponse.self)
+            )
+        usersRoute.get(use: getAllHandler)
+            .openAPI(
+                summary: "Get all users",
+                response: .type([UserResponse].self)
+            )
+        usersRoute.get(":userID", use: getHandler)
+            .openAPI(
+                summary: "Get user with ID",
+                response: .type(UserResponse.self)
+            )
+            .response(statusCode: .notFound, description: "No user with such ID")
+        usersRoute.get(":userID", "acronyms", use: getAcronymsHandler)
+            .openAPI(
+                summary: "Get user's acronyms",
+                response: .type([Acronym].self)
+            )
+            .response(statusCode: .notFound, description: "No user with such ID")
+        usersRoute.delete(":userID", use: deleteHandler)
+            .openAPI(
+                summary: "Delete user with ID",
+                response: .type(HTTPStatus.self)
+            )
+            .response(statusCode: .notFound, description: "No user with such ID")
+        usersRoute.post("siwa", use: signInWithApple)
+            .openAPI(
+                summary: "Sign in with Apple",
+                response: .type(Token.self)
+            )
+        usersRoute.get(":userID", "profilePicture", use: getUserProfilePictureHandler)
+            .openAPI(
+                summary: "Get user's profile picture"
+            )
+        return usersRoute
+    }
+
+    private func buildGeneralUserRoutesV2(builder: RoutesBuilder) {
+        let usersV2Route = builder
+                .groupedOpenAPI(tags: ["Users - V2"])
+                .grouped("api", "v2", "users")
+        usersV2Route.get(":userID", use: getHandlerV2)
+            .openAPI(
+                summary: "Get user with ID",
+                response: .type(UserResponse.self)
+            )
+            .response(statusCode: .notFound, description: "No user with such ID")
+    }
+
+    private func buildAuthenticatedUserRoutes(builder: RoutesBuilder) {
+        let basicAuthMiddleware = User.authenticator()
+        let basicAuthGroup = builder
+            .groupedOpenAPI(auth: .basic())
+            .grouped(basicAuthMiddleware)
+            .groupedOpenAPI(tags: ["Users"])
+
+        basicAuthGroup.post("login", use: loginHandler)
+            .openAPI(
+                summary: "Add profile picture",
+                body: .type(Data.self),
+			    contentType: .application(.octetStream),
+                response: .type(HTTPStatus.self)
+            )
+
+        let tokenAuthMiddleware = Token.authenticator()
+        let guardAuthMiddleware = User.guardMiddleware()
+
+        let tokenAuthGroup = builder
+        .groupedOpenAPI(auth: .bearer(id: "Authorization"))
+        .grouped(
+            tokenAuthMiddleware,
+            guardAuthMiddleware
+        )
+
+        tokenAuthGroup.on(
+            .POST,
+            "profilePicture",
+            body: .collect(maxSize: "10mb"),
+            use: addProfilePictureHandler
+        )
+        .openAPI(
+            summary: "Add profile picture",
+            body: .type(Data.self),
+			contentType: .application(.octetStream),
+            response: .type(HTTPStatus.self)
+        )
     }
 }
 
