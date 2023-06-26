@@ -1,32 +1,12 @@
 import Vapor
 import Fluent
+import VaporToOpenAPI
 
 struct AcronymController: RouteCollection {
 
     func boot(routes: RoutesBuilder) throws {
-        let acronymsRoutes = routes.grouped("api", "acronyms")
-        acronymsRoutes.get(use: getAllHandler)
-        acronymsRoutes.get(":acronymID", use: getHandler)
-        acronymsRoutes.get("search", use: searchHandler)
-        acronymsRoutes.get("sorted", use: sortedHandler)
-        acronymsRoutes.get("first", use: firstHandler)
-        acronymsRoutes.get(":acronymID", "user", use: getUserHandler)
-        acronymsRoutes.get(":acronymID", "categories", use: getCategoriesHandler)
-
-        // let basicAuthMiddleware = User.authenticator()
-        let tokenAuthMiddleware = Token.authenticator()
-        let guardAuthMiddleware = User.guardMiddleware()
-
-        let tokenAuthGroup = acronymsRoutes.grouped(
-            tokenAuthMiddleware,
-            guardAuthMiddleware
-        )
-
-        tokenAuthGroup.post(use: createHandler)
-        tokenAuthGroup.put(":acronymID", use: updateHandler)
-        tokenAuthGroup.delete(":acronymID", use: deleteHandler)
-        tokenAuthGroup.post(":acronymID", "categories", ":categoryID", use: addCategoriesHandler)
-        tokenAuthGroup.delete(":acronymID", "categories", ":categoryID", use: removeCategoriesHandler)
+        let acronymRoutes = buildGeneralAcronymRoutes(routes: routes)
+        buildAuthenticatedAcronymRoutes(builder: acronymRoutes)
     }
 
     func getAllHandler(_ req: Request) async throws -> [AcronymResponse] {
@@ -160,5 +140,95 @@ struct AcronymController: RouteCollection {
 
         try await acronym.$categories.detach(category, on: req.db)
         return .noContent
+    }
+
+    private func buildGeneralAcronymRoutes(routes: RoutesBuilder) -> RoutesBuilder {
+        let acronymsRoutes = routes
+            .groupedOpenAPI(tags: ["Acronyms"])
+            .grouped("api", "acronyms")
+
+            acronymsRoutes.get(use: getAllHandler)
+                .openAPI(
+                    summary: "Get all acronyms",
+                    response: .type([AcronymResponse].self)
+                )
+            acronymsRoutes.get(":acronymID", use: getHandler)
+                .openAPI(
+                    summary: "Get acornym by ID",
+                    response: .type(AcronymResponse.self)
+                )
+            acronymsRoutes.get("search", use: searchHandler)
+                .openAPI(
+                    summary: "Search acronyms",
+                    response: .type([AcronymResponse].self)
+                )
+            acronymsRoutes.get("sorted", use: sortedHandler)
+                .openAPI(
+                    summary: "Get sorted acronyms",
+                    response: .type([AcronymResponse].self)
+                )
+            acronymsRoutes.get("first", use: firstHandler)
+                .openAPI(
+                    summary: "Get first acronym",
+                    response: .type(AcronymResponse.self)
+                )
+            acronymsRoutes.get(":acronymID", "user", use: getUserHandler)
+                .openAPI(
+                    summary: "Get user of acronym with ID",
+                    response: .type(UserResponse.self)
+                )
+            acronymsRoutes.get(":acronymID", "categories", use: getCategoriesHandler)
+                .openAPI(
+                    summary: "Get categories of acronym with ID",
+                    response: .type([Category].self)
+                )
+        return acronymsRoutes
+    }
+
+    private func buildAuthenticatedAcronymRoutes(builder: RoutesBuilder) {
+        let tokenAuthMiddleware = Token.authenticator()
+        let guardAuthMiddleware = User.guardMiddleware()
+
+        let tokenAuthGroup = builder
+            .groupedOpenAPI(auth: .bearer(id: "Authorization"))
+            .groupedOpenAPIResponse(statusCode: .unauthorized)
+            .grouped(
+                tokenAuthMiddleware,
+                guardAuthMiddleware
+            )
+
+        tokenAuthGroup.post(use: createHandler)
+            .openAPI(
+                summary: "Create an acronym",
+                description: "Create an acronym with provided data",
+                body: .type(AcronymRequest.self),
+                response: .type(AcronymResponse.self)
+            )
+
+        tokenAuthGroup.put(":acronymID", use: updateHandler)
+            .openAPI(
+                summary: "Update an acronym",
+                description: "Updates an acronym with provided data",
+                body: .type(AcronymRequest.self),
+                response: .type(AcronymResponse.self)
+            )
+        tokenAuthGroup.delete(":acronymID", use: deleteHandler)
+            .openAPI(
+                summary: "Delete an acronym",
+                description: "Deletes an acronym with provided ID",
+                response: .type(HTTPStatus.self)
+            )
+        tokenAuthGroup.post(":acronymID", "categories", ":categoryID", use: addCategoriesHandler)
+            .openAPI(
+                summary: "Add category to acronym",
+                description: "Add category to acronym with provided ID of acronym and category",
+                response: .type(HTTPStatus.self)
+            )
+        tokenAuthGroup.delete(":acronymID", "categories", ":categoryID", use: removeCategoriesHandler)
+            .openAPI(
+                summary: "Remove category from acronym",
+                description: "Remove category from acronym with provided ID of acronym and category",
+                response: .type(HTTPStatus.self)
+            )
     }
 }
